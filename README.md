@@ -122,7 +122,7 @@ kafka-snowflake-pipeline/
 ### 1. Clone the Repository
 
 ```bash
-git clone <your-repository-url>
+git clone https://github.com/Adarsh12325/kafka-snowflake-pipeline
 cd kafka-snowflake-pipeline
 ```
 
