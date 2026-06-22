@@ -1,0 +1,9 @@
+user_id,type,page,status_code
+usr_9981,user_click,/home,200
+usr_1024,user_login,/login,200
+usr_5562,user_click,/product/details,200
+THIS_IS_A_MALFORMED_ROW_NO_COMMAS_AND_MISSING_DATA
+usr_4322,user_click,/checkout/pay,500
+usr_8829,user_logout,/logout,200
+usr_3110,invalid_event_type_test,/,
+usr_0091,user_click,/cart,200

@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    hostname: zookeeper
+    container_name: zookeeper-service
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - pipeline-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    hostname: kafka
+    container_name: kafka-broker
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    depends_on:
+      - zookeeper
+    networks:
+      - pipeline-network
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui-dashboard
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local-kafka
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    depends_on:
+      - kafka
+    networks:
+      - pipeline-network
+
+  producer:
+    build:
+      context: ./producer
+      dockerfile: Dockerfile
+    container_name: event-producer-service
+    environment:
+      KAFKA_BROKER_ADDRESS: kafka:29092
+      KAFKA_TOPIC_RAW_EVENTS: raw_events
+      PRODUCER_RATE_SECONDS: 1.0
+      PRODUCER_LOOP_FOREVER: "true"
+    depends_on:
+      - kafka
+    networks:
+      - pipeline-network
+
+  consumer:
+    build:
+      context: ./consumer
+      dockerfile: Dockerfile
+    container_name: event-consumer-service
+    environment:
+      KAFKA_BROKER_ADDRESS: kafka:29092
+      KAFKA_TOPIC_RAW_EVENTS: raw_events
+      KAFKA_TOPIC_FAILED_EVENTS: failed_events
+      SNOWFLAKE_ACCOUNT: ${SNOWFLAKE_ACCOUNT}
+      SNOWFLAKE_USER: ${SNOWFLAKE_USER}
+      SNOWFLAKE_PASSWORD: ${SNOWFLAKE_PASSWORD}
+      SNOWFLAKE_WAREHOUSE: ${SNOWFLAKE_WAREHOUSE}
+      SNOWFLAKE_DATABASE: ${SNOWFLAKE_DATABASE}
+      SNOWFLAKE_SCHEMA: ${SNOWFLAKE_SCHEMA}
+      SNOWFLAKE_TABLE_PROCESSED_EVENTS: ${SNOWFLAKE_TABLE_PROCESSED_EVENTS:-events_processed}
+      MAX_RETRIES: 3
+      RETRY_BACKOFF_BASE_SECONDS: 1
+      BATCH_SIZE: 10
+      SIMULATE_SNOWFLAKE_FAILURE: ${SIMULATE_SNOWFLAKE_FAILURE:-false}
+    depends_on:
+      - kafka
+    networks:
+      - pipeline-network
+
+networks:
+  pipeline-network:
+    driver: bridge
